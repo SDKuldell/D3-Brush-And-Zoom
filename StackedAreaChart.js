@@ -28,15 +28,34 @@ export default function StackedAreaChart(container) {
 
   svg.append("g").attr("class", "axis y-axis");
 
-  function update(data) {
-    const keys = data.columns.slice(1);
+  let selected = null,
+    data,
+    xDomain;
 
-    const stackedData = d3.stack().keys(keys)(data);
+  function update(_data) {
+    let data = _data;
+
+    console.log("data", data);
+    const keys = selected ? selected : data.columns.slice(1);
+
+    console.log(keys);
+
+    var stack = d3
+      .stack()
+      .keys(keys)
+      .order(d3.stackOrderNone)
+      .offset(d3.stackOffsetNone);
+
+    var stackedData = stack(data);
+
+    console.log(stackedData);
 
     xScale.domain(
-      d3.extent(data, function (d) {
-        return d.date;
-      })
+      xDomain
+        ? xDomain
+        : d3.extent(data, function (d) {
+            return d.date;
+          })
     );
 
     yScale.domain([0, d3.max(stackedData, (d) => d3.max(d, (d) => d[1]))]);
@@ -51,15 +70,21 @@ export default function StackedAreaChart(container) {
 
     const areas = svg.selectAll(".area").data(stackedData, (d) => d.key);
 
-    areas.join("path").attr("d", area);
+    areas
+      .join("path")
+      .attr("fill", (d) => colorScale(d.key))
+      .attr("d", area)
+      .on("click", (event, d) => {
+        // toggle selected based on d.key
+        if (selected === d.key) {
+          selected = null;
+        } else {
+          selected = d.key;
+        }
+        update(data); // simply update the chart again
+      });
 
     areas.exit().remove();
-
-    svg
-      .append("path")
-      .data(stackedData)
-      .attr("fill", (d) => colorScale(d.key))
-      .attr("d", area);
 
     const xAxis = d3.axisBottom(xScale);
 
@@ -69,7 +94,14 @@ export default function StackedAreaChart(container) {
 
     svg.select(".y-axis").call(yAxis);
   }
+
+  function filterByDate(range) {
+    console.log("filter data", data);
+    xDomain = range;
+    update(data);
+  }
   return {
     update,
+    filterByDate,
   };
 }

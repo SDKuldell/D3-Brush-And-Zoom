@@ -28,6 +28,22 @@ export default function AreaChart(container) {
 
   svg.append("g").attr("class", "axis y-axis");
 
+  const brush = d3
+    .brushX()
+    .extent([
+      [0, 0],
+      [width, height],
+    ])
+    .on("end", brushed);
+
+  const listeners = { brushed: null };
+
+  function brushed(event) {
+    if (event.selection) {
+      listeners["brushed"](event.selection.map(xScale.invert));
+    }
+  }
+
   function update(data) {
     // update scales, encodings, axes (use the total count)
 
@@ -60,9 +76,16 @@ export default function AreaChart(container) {
     const yAxis = d3.axisLeft(yScale);
 
     svg.select(".y-axis").call(yAxis);
+
+    svg.append("g").attr("class", "brush").call(brush);
+  }
+
+  function on(event, listener) {
+    listeners[event] = listener;
   }
 
   return {
     update, // ES6 shorthand for "update": update
+    on,
   };
 }
